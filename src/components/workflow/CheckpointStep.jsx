@@ -153,11 +153,25 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
       toast({ description: 'Approved — passing to next step' });
     }
     onUpdate?.();
-    setSaving(false);
-  };
-
-  const handleReject = async () => {
     setSaving(true);
+    let updatedStep = { ...step, status: 'approved', human_feedback: feedback || undefined };
+    if (demoApiClient.entities?.WorkflowStep?.update) {
+      await demoApiClient.entities.WorkflowStep.update(step.id, {
+        status: 'approved',
+        human_feedback: feedback || undefined,
+      });
+    }
+    // Send webhook with updated status and action
+    await sendWebhookResponse('approved');
+    if (isFinalStep) {
+      toast({ description: 'Final decision approved — generated final report available below.' });
+    }
+    onUpdate?.();
+    setSaving(false);
+    toast({ description: 'Sent back for revision' });
+    onUpdate?.();
+    setSaving(true);
+    let updatedStep = { ...step, status: 'revision_requested', human_feedback: feedback || undefined, ai_output: null };
     if (demoApiClient.entities?.WorkflowStep?.update) {
       await demoApiClient.entities.WorkflowStep.update(step.id, {
         status: 'revision_requested',
@@ -165,21 +179,11 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
         ai_output: null,
       });
     }
+    // Send webhook with updated status and action
     await sendWebhookResponse('rejected');
     toast({ description: 'Sent back for revision' });
     onUpdate?.();
     setSaving(false);
-  };
-
-  const stepNum = step.step_number;
-  const title = step.title || STEP_NAMES[stepNum] || `Checkpoint ${stepNum}`;
-  const description = step.description || STEP_DESCRIPTIONS[stepNum] || '';
-
-  return (
-    <div
-      className={`border rounded-xl transition-all duration-300 ${
-        isWaiting ? 'border-2 shadow-sm' : 'border-gray-100'
-      }`}
       style={isWaiting ? { borderColor: '#1B2A4A' } : {}}
     >
       {/* Header */}
