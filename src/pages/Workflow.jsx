@@ -65,8 +65,8 @@ function GeneratedReport({ projectId, refreshAll, project, steps }) {
 }
 
 const CHECKPOINT_NAMES = {
-  1: 'Analysis Sanity Check I',
-  2: 'Analysis Sanity Check II',
+  1: 'Detailed Industry Context Document',
+  2: 'Executive Strategy Memo',
   3: 'Questionnaire',
   4: 'Final Strategic Decision',
 };
@@ -336,6 +336,34 @@ export default function Workflow() {
               >
                 {triggering ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                 Launch Analysis
+              </Button>
+            )}
+            {!isDraft && (
+              <Button
+                onClick={async () => {
+                  // Delete workflow steps
+                  const stepsToDelete = steps.map(s => s.id);
+                  for (const stepId of stepsToDelete) {
+                    await demoApiClient.entities.WorkflowStep.delete(stepId);
+                  }
+                  // Delete reports
+                  const reports = await demoApiClient.entities.StrategyReport.filter({ project_id: project.id });
+                  for (const report of reports) {
+                    await demoApiClient.entities.StrategyReport.delete(report.id);
+                  }
+                  // Reset project status, step, layer
+                  await demoApiClient.entities.StrategyProject.update(project.id, {
+                    status: 'draft',
+                    current_step: 1,
+                    current_layer: 1,
+                  });
+                  refreshAll();
+                  toast({ description: 'Analysis restarted. You can launch again.' });
+                }}
+                className="font-sans text-sm text-white gap-2"
+                style={{ background: '#E67E22' }}
+              >
+                <RotateCcw className="w-4 h-4" /> Restart Analysis
               </Button>
             )}
           </div>

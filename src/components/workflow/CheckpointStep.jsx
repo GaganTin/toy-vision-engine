@@ -13,8 +13,8 @@ import { toast } from '@/components/ui/use-toast';
 import { jsPDF } from 'jspdf';
 
 const STEP_NAMES = {
-  1: 'Analysis Sanity Check',
-  2: 'Analysis Sanity Check',
+  1: 'Detailed Industry Context Document',
+  2: 'Executive Strategy Memo',
   3: 'Questionnaire',
   4: 'Final Strategic Decision',
 };

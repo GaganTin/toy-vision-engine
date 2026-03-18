@@ -1,8 +1,8 @@
 import React from 'react';
 import { Search, BarChart3, Target, Check, Loader2, ClipboardType } from 'lucide-react';
 const layers = [
-  { num: 1, label: 'Analysis Sanity Check', icon: Search },
-  { num: 2, label: 'Analysis Sanity Check', icon: BarChart3 },
+  { num: 1, label: 'Detailed Industry Context Document', icon: Search },
+  { num: 2, label: 'Executive Strategy Memo', icon: BarChart3 },
   { num: 3, label: 'Questionnaire', icon: ClipboardType },
   { num: 4, label: 'Final Strategic Decision', icon: Target },
 ];

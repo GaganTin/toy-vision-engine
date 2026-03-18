@@ -78,46 +78,54 @@ app.post('/api/projects', async (req, res) => {
 // Endpoint for n8n to post pending approvals for specific slots (1,2,3)
 async function handlePendingApproval(req, res, slot) {
   const payload = req.body || {};
-  // Expect payload: { project_id, step_number, ai_output, title, confidence_score, callback_url }
   const projectId = payload.project_id || payload.projectId || payload.id;
   const stepNumber = payload.step_number || payload.stepNumber || slot;
   const ai_output = payload.ai_output || payload.message || payload.report || '';
   const title = payload.title || `Checkpoint ${stepNumber}`;
   const confidence_score = payload.confidence_score || payload.confidence || undefined;
   const callback_url = payload.callback_url || payload.callbackUrl || payload.webhook || null;
+  const now = new Date();
 
-  const steps = await readJson(STEPS_FILE);
-  // find an existing step for this project and step_number
-  let step = steps.find(s => s.project_id === projectId && s.step_number === stepNumber);
-  if (step) {
-    step.ai_output = ai_output;
-    step.title = title;
-    step.status = 'awaiting_validation';
-    step.requires_validation = true;
-    if (confidence_score != null) step.confidence_score = confidence_score;
-    if (callback_url) step.callback_url = callback_url;
-    step.updated_date = new Date().toISOString();
+  // Check if step exists
+  const existingStep = await pool.query('SELECT * FROM workflow_step WHERE project_id = $1 AND step_number = $2', [projectId, stepNumber]);
+  let stepId;
+  if (existingStep.rows.length) {
+    stepId = existingStep.rows[0].id;
+    await pool.query(
+      `UPDATE workflow_step SET ai_output=$1, title=$2, status=$3, requires_validation=$4, callback_url=$5, layer=$6, created_date=$7 WHERE id=$8`,
+      [
+        ai_output,
+        title,
+        'awaiting_validation',
+        true,
+        callback_url,
+        slot,
+        now,
+        stepId
+      ]
+    );
   } else {
-    step = {
-      id: generateId(),
-      project_id: projectId,
-      step_number: stepNumber,
-      layer: slot,
-      title,
-      ai_output,
-      confidence_score,
-      requires_validation: true,
-      status: 'awaiting_validation',
-      callback_url,
-      created_date: new Date().toISOString(),
-    };
-    steps.push(step);
+    stepId = generateId();
+    await pool.query(
+      `INSERT INTO workflow_step (id, project_id, step_number, layer, title, ai_output, requires_validation, status, callback_url, created_date)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [
+        stepId,
+        projectId,
+        stepNumber,
+        slot,
+        title,
+        ai_output,
+        true,
+        'awaiting_validation',
+        callback_url,
+        now
+      ]
+    );
   }
-  await writeJson(STEPS_FILE, steps);
 
-  // Also update the project current_layer to slot and status to awaiting_review
+  // Update project current_layer and status
   try {
-    const projects = await readJson(PROJECTS_FILE);
     const pidx = projects.findIndex(p => p.id === projectId);
     if (pidx !== -1) {
       projects[pidx].current_layer = slot;
