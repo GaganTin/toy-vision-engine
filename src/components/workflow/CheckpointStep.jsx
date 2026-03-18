@@ -121,69 +121,46 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
 
   const handleApprove = async () => {
     setSaving(true);
-    if (demoApiClient.entities?.WorkflowStep?.update) {
-      await demoApiClient.entities.WorkflowStep.update(step.id, {
-        status: 'approved',
-        human_feedback: feedback || undefined,
-      });
-    }
-    await sendWebhookResponse('approved');
-    if (isFinalStep) {
-      toast({ description: 'Final decision approved — generated final report available below.' });
-      // Generate a final report (unsaved) for review in the Workflow page
-      try {
-        const reportData = {
-          project_id: step.project_id,
-          title: `Final Report - ${projectTitle || step.title || 'Strategy'}`,
-          report: step.ai_output || feedback || '',
-          generated: true,
-          saved: false,
-        };
-        if (demoApiClient.entities?.StrategyReport?.generate) {
-          await demoApiClient.entities.StrategyReport.generate(reportData);
-        } else if (demoApiClient.entities?.StrategyReport?.create) {
-          // fallback: create with generated/saved flags
-          await demoApiClient.entities.StrategyReport.create(reportData);
-        }
-        // Do NOT mark project completed here — user must Save the generated report to persist it in Reports
-      } catch (e) {
-        // non-blocking
+    try {
+      // 1. Update DB
+      if (demoApiClient.entities?.WorkflowStep?.update) {
+        await demoApiClient.entities.WorkflowStep.update(step.id, {
+          status: 'approved',
+          human_feedback: feedback || undefined,
+        });
       }
-    } else {
-      toast({ description: 'Approved — passing to next step' });
+      // 2. Send webhook
+      await sendWebhookResponse('approved');
+      // 3. Toast and report logic
+      if (isFinalStep) {
+        toast({ description: 'Final decision approved — generated final report available below.' });
+        try {
+          const reportData = {
+            project_id: step.project_id,
+            title: `Final Report - ${projectTitle || step.title || 'Strategy'}`,
+            report: step.ai_output || feedback || '',
+            generated: true,
+            saved: false,
+          };
+          if (demoApiClient.entities?.StrategyReport?.generate) {
+            await demoApiClient.entities.StrategyReport.generate(reportData);
+          } else if (demoApiClient.entities?.StrategyReport?.create) {
+            await demoApiClient.entities.StrategyReport.create(reportData);
+          }
+        } catch (e) {
+          console.error('Report generation failed:', e);
+        }
+      } else {
+        toast({ description: 'Approved — passing to next step' });
+      }
+    } catch (e) {
+      console.error('Approve step failed:', e);
+      toast({ description: 'Failed to approve step', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+      onUpdate?.();
     }
-    onUpdate?.();
-    setSaving(true);
-    let updatedStep = { ...step, status: 'approved', human_feedback: feedback || undefined };
-    if (demoApiClient.entities?.WorkflowStep?.update) {
-      await demoApiClient.entities.WorkflowStep.update(step.id, {
-        status: 'approved',
-        human_feedback: feedback || undefined,
-      });
-    }
-    // Send webhook with updated status and action
-    await sendWebhookResponse('approved');
-    if (isFinalStep) {
-      toast({ description: 'Final decision approved — generated final report available below.' });
-    }
-    onUpdate?.();
-    setSaving(false);
-    toast({ description: 'Sent back for revision' });
-    onUpdate?.();
-    setSaving(true);
-    let updatedStep = { ...step, status: 'revision_requested', human_feedback: feedback || undefined, ai_output: null };
-    if (demoApiClient.entities?.WorkflowStep?.update) {
-      await demoApiClient.entities.WorkflowStep.update(step.id, {
-        status: 'revision_requested',
-        human_feedback: feedback || undefined,
-        ai_output: null,
-      });
-    }
-    // Send webhook with updated status and action
-    await sendWebhookResponse('rejected');
-    toast({ description: 'Sent back for revision' });
-    onUpdate?.();
-    setSaving(false);
+  };
       style={isWaiting ? { borderColor: '#1B2A4A' } : {}}
     >
       {/* Header */}
@@ -300,20 +277,27 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
                       const target = step.callback_url || (typeof project !== 'undefined' ? project.n8n_webhook_url : undefined);
                       if (!target) {
                         toast({ description: 'No callback URL set', variant: 'destructive' });
-                        setSaving(false);
-                        return;
-                      }
-                      // Build answers in the new format
-                      let parsed = null;
-                      try {
-                        parsed = JSON.parse(step.ai_output);
-                      } catch {}
-                      const questionnaire = parsed?.questionnaire_form || {};
-                      const formattedAnswers = {};
-                      qids.forEach((qid, idx) => {
-                        const qdata = questionnaire[qid];
-                        if (!qdata) return;
-                        if (idx === qids.length - 1) {
+                        setSaving(true);
+                        try {
+                          // 1. Update DB
+                          if (demoApiClient.entities?.WorkflowStep?.update) {
+                            await demoApiClient.entities.WorkflowStep.update(step.id, {
+                              status: 'revision_requested',
+                              human_feedback: feedback || undefined,
+                              ai_output: null,
+                            });
+                          }
+                          // 2. Send webhook
+                          await sendWebhookResponse('rejected');
+                          toast({ description: 'Sent back for revision' });
+                        } catch (e) {
+                          console.error('Reject step failed:', e);
+                          toast({ description: 'Failed to send back for revision', variant: 'destructive' });
+                        } finally {
+                          setSaving(false);
+                          onUpdate?.();
+                        }
+                      };
                           // Last question: text answer
                           formattedAnswers[qid] = {
                             question: qdata.question,
