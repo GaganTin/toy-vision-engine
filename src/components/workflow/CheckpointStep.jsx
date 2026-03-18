@@ -99,39 +99,45 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
 
   const handleApprove = async () => {
     setSaving(true);
-    if (demoApiClient.entities?.WorkflowStep?.update) {
-      await demoApiClient.entities.WorkflowStep.update(step.id, {
-        status: 'approved',
-        human_feedback: feedback || undefined,
-      });
-    }
-    await sendWebhookResponse('approved');
-    if (isFinalStep) {
-      toast({ description: 'Final decision approved — generated final report available below.' });
-      // Generate a final report (unsaved) for review in the Workflow page
-      try {
-        const reportData = {
-          project_id: step.project_id,
-          title: `Final Report - ${projectTitle || step.title || 'Strategy'}`,
-          report: step.ai_output || feedback || '',
-          generated: true,
-          saved: false,
-        };
-        if (demoApiClient.entities?.StrategyReport?.generate) {
-          await demoApiClient.entities.StrategyReport.generate(reportData);
-        } else if (demoApiClient.entities?.StrategyReport?.create) {
-          // fallback: create with generated/saved flags
-          await demoApiClient.entities.StrategyReport.create(reportData);
-        }
-        // Do NOT mark project completed here — user must Save the generated report to persist it in Reports
-      } catch (e) {
-        // non-blocking
+    try {
+      // 1. Update DB
+      if (demoApiClient.entities?.WorkflowStep?.update) {
+        await demoApiClient.entities.WorkflowStep.update(step.id, {
+          status: 'approved',
+          human_feedback: feedback || undefined,
+        });
       }
-    } else {
-      toast({ description: 'Approved — passing to next step' });
+      // 2. Send webhook
+      await sendWebhookResponse('approved');
+      // 3. Toast and report logic
+      if (isFinalStep) {
+        toast({ description: 'Final decision approved — generated final report available below.' });
+        try {
+          const reportData = {
+            project_id: step.project_id,
+            title: `Final Report - ${projectTitle || step.title || 'Strategy'}`,
+            report: step.ai_output || feedback || '',
+            generated: true,
+            saved: false,
+          };
+          if (demoApiClient.entities?.StrategyReport?.generate) {
+            await demoApiClient.entities.StrategyReport.generate(reportData);
+          } else if (demoApiClient.entities?.StrategyReport?.create) {
+            await demoApiClient.entities.StrategyReport.create(reportData);
+          }
+        } catch (e) {
+          // non-blocking
+        }
+      } else {
+        toast({ description: 'Approved — passing to next step' });
+      }
+    } catch (e) {
+      toast({ description: 'Failed to approve step', variant: 'destructive' });
+      console.error('Approve step failed:', e);
+    } finally {
+      onUpdate?.();
+      setSaving(false);
     }
-    onUpdate?.();
-    setSaving(false);
   };
 
   const handleReject = async () => {
