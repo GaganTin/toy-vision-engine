@@ -2,7 +2,7 @@
 // ...existing code...
 
 // const API_BASE = typeof window !== 'undefined' && window?.__DEMO_API_URL ? window.__DEMO_API_URL : (import.meta.env.VITE_API_URL || 'http://localhost:4000/api');
-const API_BASE = 'http://localhost:4000/api';
+const API_BASE = 'https://toy-vision-engine-be.onrender.com/api';
 
 async function safeFetch(path, options) {
   try {
