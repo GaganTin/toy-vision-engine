@@ -234,24 +234,29 @@ app.post('/api/reports', async (req, res) => {
 
 // Endpoint for generated final report (produced by AI after the 3 checkpoints)
 app.post('/api/final-report', async (req, res) => {
-  const payload = req.body || {};
-  const projectId = payload.project_id || payload.projectId;
-  if (!projectId) return res.status(400).json({ error: 'project_id required' });
-
-  const reports = await readJson(REPORTS_FILE);
-  // find existing generated (unsaved) report for this project
-  let report = reports.find(r => r.project_id === projectId && r.generated === true && !r.saved);
-  if (report) {
-    report = { ...report, ...payload, updated_date: new Date().toISOString() };
-    // replace in array
-    const idx = reports.findIndex(r => r.id === report.id);
-    reports[idx] = report;
-  } else {
-    report = { ...payload, id: generateId(), generated: true, saved: false, created_date: new Date().toISOString() };
-    reports.push(report);
+  try {
+    const payload = req.body || {};
+    const projectId = payload.project_id || payload.projectId;
+    if (!projectId) return res.status(400).json({ error: 'project_id required' });
+    const newReportId = generateId();
+    const now = new Date();
+    await pool.query(
+      `INSERT INTO strategy_report (id, project_id, overall_score, generated, saved, created_date, updated_date)
+      VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      [
+        newReportId,
+        projectId,
+        payload.overall_score,
+        true,
+        false,
+        now,
+        now
+      ]
+    );
+    res.json({ id: newReportId, ...payload, generated: true, saved: false, created_date: now, updated_date: now });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to create final report', details: e.message });
   }
-  await writeJson(REPORTS_FILE, reports);
-  res.json(report);
 });
 
 app.put('/api/reports/:id', async (req, res) => {

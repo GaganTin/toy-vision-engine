@@ -1,4 +1,5 @@
 // Demo API client that prefers calling a local API server for persistent updates.
+const FALLBACK = { steps: [], reports: [] };
 // ...existing code...
 
 // const API_BASE = typeof window !== 'undefined' && window?.__DEMO_API_URL ? window.__DEMO_API_URL : (import.meta.env.VITE_API_URL || 'http://localhost:4000/api');
@@ -124,4 +125,5 @@ export const demoApiClient = {
       },
     },
   },
+  // FALLBACK is now defined at the top for global access.
 };

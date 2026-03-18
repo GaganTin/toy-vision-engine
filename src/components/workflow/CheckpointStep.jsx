@@ -13,8 +13,8 @@ import { toast } from '@/components/ui/use-toast';
 import { jsPDF } from 'jspdf';
 
 const STEP_NAMES = {
-  1: 'Analysis Sanity Check',
-  2: 'Analysis Sanity Check',
+  1: 'Detailed Industry Context Document',
+  2: 'Executive Strategy Memo',
   3: 'Questionnaire',
   4: 'Final Strategic Decision',
 };
@@ -99,45 +99,39 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
 
   const handleApprove = async () => {
     setSaving(true);
-    try {
-      // 1. Update DB
-      if (demoApiClient.entities?.WorkflowStep?.update) {
-        await demoApiClient.entities.WorkflowStep.update(step.id, {
-          status: 'approved',
-          human_feedback: feedback || undefined,
-        });
-      }
-      // 2. Send webhook
-      await sendWebhookResponse('approved');
-      // 3. Toast and report logic
-      if (isFinalStep) {
-        toast({ description: 'Final decision approved — generated final report available below.' });
-        try {
-          const reportData = {
-            project_id: step.project_id,
-            title: `Final Report - ${projectTitle || step.title || 'Strategy'}`,
-            report: step.ai_output || feedback || '',
-            generated: true,
-            saved: false,
-          };
-          if (demoApiClient.entities?.StrategyReport?.generate) {
-            await demoApiClient.entities.StrategyReport.generate(reportData);
-          } else if (demoApiClient.entities?.StrategyReport?.create) {
-            await demoApiClient.entities.StrategyReport.create(reportData);
-          }
-        } catch (e) {
-          // non-blocking
-        }
-      } else {
-        toast({ description: 'Approved — passing to next step' });
-      }
-    } catch (e) {
-      toast({ description: 'Failed to approve step', variant: 'destructive' });
-      console.error('Approve step failed:', e);
-    } finally {
-      onUpdate?.();
-      setSaving(false);
+    if (demoApiClient.entities?.WorkflowStep?.update) {
+      await demoApiClient.entities.WorkflowStep.update(step.id, {
+        status: 'approved',
+        human_feedback: feedback || undefined,
+      });
     }
+    await sendWebhookResponse('approved');
+    if (isFinalStep) {
+      toast({ description: 'Final decision approved — generated final report available below.' });
+      // Generate a final report (unsaved) for review in the Workflow page
+      try {
+        const reportData = {
+          project_id: step.project_id,
+          title: `Final Report - ${projectTitle || step.title || 'Strategy'}`,
+          report: step.ai_output || feedback || '',
+          generated: true,
+          saved: false,
+        };
+        if (demoApiClient.entities?.StrategyReport?.generate) {
+          await demoApiClient.entities.StrategyReport.generate(reportData);
+        } else if (demoApiClient.entities?.StrategyReport?.create) {
+          // fallback: create with generated/saved flags
+          await demoApiClient.entities.StrategyReport.create(reportData);
+        }
+        // Do NOT mark project completed here — user must Save the generated report to persist it in Reports
+      } catch (e) {
+        // non-blocking
+      }
+    } else {
+      // Removed toast for 'Approved — passing to next step'
+    }
+    onUpdate?.();
+    setSaving(false);
   };
 
   const handleReject = async () => {
@@ -218,8 +212,8 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
               } catch {}
               const questionnaire = parsed?.questionnaire_form || {};
               const qids = Object.keys(questionnaire);
-              // Only require answers for the first 7 questions
-              const allAnswered = qids.slice(0, 7).every(qid => (answers[qid] || []).length > 0 || (typeof answers[qid] === 'string' && answers[qid].trim() !== ''));
+              // Require all except last question to be answered
+              const allAnswered = qids.length <= 1 || qids.slice(0, -1).every(qid => (answers[qid] || []).length > 0 || (typeof answers[qid] === 'string' && answers[qid].trim() !== ''));
               return (
                 <form className="space-y-6 mb-6">
                   {qids.map((qid, idx) => {
@@ -322,10 +316,14 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
                             project_id: step.project_id,
                           }),
                         });
-                        toast({ description: 'Answers sent to n8n' });
+                        toast({
+                          description: 'Answers sent to n8n',
+                          duration: 1200,
+                          className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
+                        });
                         setIsResponse(true);
                         // Mark step as approved after successful submission
-                        if (step.step_number === 3 && demoApiClient?.entities?.WorkflowStep?.update) {
+                        if (demoApiClient?.entities?.WorkflowStep?.update) {
                           try {
                             await demoApiClient.entities.WorkflowStep.update(step.id, { status: 'approved', answers: formattedAnswers });
                           } catch (e) {}
@@ -390,7 +388,7 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
             </div>
           )}
 
-          {/* Validation Controls */}
+          {/* Validation Controls: Only show for current step */}
           {!is_form && isWaiting && (step.step_number === 1 || step.step_number === 2 || step.step_number === 4) && (
             <div className="space-y-3 pt-2">
               <div className="flex gap-2">
@@ -419,6 +417,11 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
                 </p>
               )}
             </div>
+          )}
+
+          {/* Disable editing for previous steps */}
+          {!isWaiting && (
+            <div className="text-xs text-gray-400 italic mt-2">This step is locked and cannot be changed after advancing.</div>
           )}
 
           {/* Past feedback */}

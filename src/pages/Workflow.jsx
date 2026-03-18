@@ -390,11 +390,7 @@ export default function Workflow() {
                     current_layer: 1,
                   });
                   refreshAll();
-                  toast({
-                    description: 'Analysis restarted. You can launch again.',
-                    duration: 1200,
-                    className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
-                  });
+                  // Removed toast for 'Analysis restarted. You can launch again.'
                 }}
                 className="font-sans text-sm text-white gap-2"
                 style={{ background: '#E67E22' }}

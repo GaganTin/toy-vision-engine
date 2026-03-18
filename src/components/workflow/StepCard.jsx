@@ -137,28 +137,35 @@ export default function StepCard({ step, onUpdate }) {
 
           {/* Validation Controls */}
           {isWaiting && (
-            <div className="space-y-3 pt-2">
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => handleAction('approved')}
-                  disabled={saving}
-                  className="flex-1 font-sans text-sm text-white"
-                  style={{ background: '#1A8917' }}
-                >
-                  <Check className="w-4 h-4 mr-1.5" />
-                  Approve & Continue
-                </Button>
-                <Button
-                  onClick={() => handleAction('revision_requested')}
-                  disabled={saving}
-                  variant="outline"
-                  className="flex-1 font-sans text-sm"
-                >
-                  <RotateCcw className="w-4 h-4 mr-1.5" />
-                  Request Revision
-                </Button>
+            {/* Validation Controls: Only show for current step */}
+            {isWaiting && (
+              <div className="space-y-3 pt-2">
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handleAction('approved')}
+                    disabled={saving}
+                    className="flex-1 font-sans text-sm text-white"
+                    style={{ background: '#1A8917' }}
+                  >
+                    <Check className="w-4 h-4 mr-1.5" />
+                    Approve & Continue
+                  </Button>
+                  <Button
+                    onClick={() => handleAction('revision_requested')}
+                    disabled={saving}
+                    variant="outline"
+                    className="flex-1 font-sans text-sm"
+                  >
+                    <RotateCcw className="w-4 h-4 mr-1.5" />
+                    Request Revision
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
+            {/* Disable editing for previous steps */}
+            {!isWaiting && (
+              <div className="text-xs text-gray-400 italic mt-2">This step is locked and cannot be changed after advancing.</div>
+            )}
           )}
 
           {/* Past feedback */}
