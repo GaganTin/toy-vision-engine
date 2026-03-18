@@ -184,7 +184,7 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
                 : { background: '#F9FAFB', color: '#6B7280' }
             }
           >
-            {stepNum}
+            {step.step_number}
           </div>
           <div>
             <h4 className="font-serif text-base font-semibold">{title}</h4>
