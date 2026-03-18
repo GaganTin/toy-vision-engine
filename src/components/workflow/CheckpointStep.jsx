@@ -13,8 +13,8 @@ import { toast } from '@/components/ui/use-toast';
 import { jsPDF } from 'jspdf';
 
 const STEP_NAMES = {
-  1: 'Detailed Industry Context Document',
-  2: 'Executive Strategy Memo',
+  1: 'Analysis Sanity Check',
+  2: 'Analysis Sanity Check',
   3: 'Questionnaire',
   4: 'Final Strategic Decision',
 };
@@ -77,30 +77,8 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
   const isFinalStep = step.step_number === 3;
 
   const sendWebhookResponse = async (action) => {
-    // Always use callback_url from DB if present
-    const target = step.callback_url;
-    if (!target) {
-      // Optionally fallback to webhookUrl if callback_url is missing
-      if (webhookUrl) {
-        try {
-          await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              checkpoint: step.step_number,
-              action,
-              feedback,
-              project_context: projectContext,
-              step_title: STEP_NAMES[step.step_number],
-              project_id: step.project_id,
-            }),
-          });
-        } catch (e) {
-          console.error('Webhook POST failed (fallback):', e);
-        }
-      }
-      return;
-    }
+    const target = step.callback_url || webhookUrl;
+    if (!target) return;
     try {
       await fetch(target, {
         method: 'POST',
@@ -115,57 +93,71 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
         }),
       });
     } catch (e) {
-      console.error('Webhook POST failed:', e);
+      // webhook failure is non-blocking
     }
   };
 
   const handleApprove = async () => {
     setSaving(true);
-    try {
-      // 1. Update DB
-      if (demoApiClient.entities?.WorkflowStep?.update) {
-        await demoApiClient.entities.WorkflowStep.update(step.id, {
-          status: 'approved',
-          human_feedback: feedback || undefined,
-        });
-      }
-      // 2. Send webhook
-      await sendWebhookResponse('approved');
-      // 3. Toast and report logic
-      if (isFinalStep) {
-        toast({ description: 'Final decision approved — generated final report available below.' });
-        try {
-          const reportData = {
-            project_id: step.project_id,
-            title: `Final Report - ${projectTitle || step.title || 'Strategy'}`,
-            report: step.ai_output || feedback || '',
-            generated: true,
-            saved: false,
-          };
-          if (demoApiClient.entities?.StrategyReport?.generate) {
-            await demoApiClient.entities.StrategyReport.generate(reportData);
-          } else if (demoApiClient.entities?.StrategyReport?.create) {
-            await demoApiClient.entities.StrategyReport.create(reportData);
-          }
-        } catch (e) {
-          console.error('Report generation failed:', e);
-        }
-      } else {
-        toast({ description: 'Approved — passing to next step' });
-      }
-    } catch (e) {
-      console.error('Approve step failed:', e);
-      toast({ description: 'Failed to approve step', variant: 'destructive' });
-    } finally {
-      setSaving(false);
-      onUpdate?.();
+    if (demoApiClient.entities?.WorkflowStep?.update) {
+      await demoApiClient.entities.WorkflowStep.update(step.id, {
+        status: 'approved',
+        human_feedback: feedback || undefined,
+      });
     }
+    await sendWebhookResponse('approved');
+    if (isFinalStep) {
+      toast({ description: 'Final decision approved — generated final report available below.' });
+      // Generate a final report (unsaved) for review in the Workflow page
+      try {
+        const reportData = {
+          project_id: step.project_id,
+          title: `Final Report - ${projectTitle || step.title || 'Strategy'}`,
+          report: step.ai_output || feedback || '',
+          generated: true,
+          saved: false,
+        };
+        if (demoApiClient.entities?.StrategyReport?.generate) {
+          await demoApiClient.entities.StrategyReport.generate(reportData);
+        } else if (demoApiClient.entities?.StrategyReport?.create) {
+          // fallback: create with generated/saved flags
+          await demoApiClient.entities.StrategyReport.create(reportData);
+        }
+        // Do NOT mark project completed here — user must Save the generated report to persist it in Reports
+      } catch (e) {
+        // non-blocking
+      }
+    } else {
+      toast({ description: 'Approved — passing to next step' });
+    }
+    onUpdate?.();
+    setSaving(false);
   };
 
-  // ...existing code...
+  const handleReject = async () => {
+    setSaving(true);
+    if (demoApiClient.entities?.WorkflowStep?.update) {
+      await demoApiClient.entities.WorkflowStep.update(step.id, {
+        status: 'revision_requested',
+        human_feedback: feedback || undefined,
+        ai_output: null,
+      });
+    }
+    await sendWebhookResponse('rejected');
+    toast({ description: 'Sent back for revision' });
+    onUpdate?.();
+    setSaving(false);
+  };
+
+  const stepNum = step.step_number;
+  const title = step.title || STEP_NAMES[stepNum] || `Checkpoint ${stepNum}`;
+  const description = step.description || STEP_DESCRIPTIONS[stepNum] || '';
 
   return (
     <div
+      className={`border rounded-xl transition-all duration-300 ${
+        isWaiting ? 'border-2 shadow-sm' : 'border-gray-100'
+      }`}
       style={isWaiting ? { borderColor: '#1B2A4A' } : {}}
     >
       {/* Header */}
@@ -184,11 +176,11 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
                 : { background: '#F9FAFB', color: '#6B7280' }
             }
           >
-            {step.step_number}
+            {stepNum}
           </div>
           <div>
-            <h4 className="font-serif text-base font-semibold">{step.title || STEP_NAMES[step.step_number] || 'Step'}</h4>
-            <p className="text-sm text-gray-500 font-sans mt-0.5">{STEP_DESCRIPTIONS[step.step_number] || ''}</p>
+            <h4 className="font-serif text-base font-semibold">{title}</h4>
+            <p className="text-sm text-gray-500 font-sans mt-0.5">{description}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -285,12 +277,18 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
                         setSaving(false);
                         return;
                       }
-                      // Format answers
-                      let formattedAnswers = {};
-                      const qids = Object.keys(questionnaireForm || {});
-                      qids.forEach((qid) => {
-                        const qdata = questionnaireForm[qid];
-                        if (qdata.type === 'text') {
+                      // Build answers in the new format
+                      let parsed = null;
+                      try {
+                        parsed = JSON.parse(step.ai_output);
+                      } catch {}
+                      const questionnaire = parsed?.questionnaire_form || {};
+                      const formattedAnswers = {};
+                      qids.forEach((qid, idx) => {
+                        const qdata = questionnaire[qid];
+                        if (!qdata) return;
+                        if (idx === qids.length - 1) {
+                          // Last question: text answer
                           formattedAnswers[qid] = {
                             question: qdata.question,
                             answer: answers[qid] || ''
