@@ -187,8 +187,8 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
             {step.step_number}
           </div>
           <div>
-            <h4 className="font-serif text-base font-semibold">{title}</h4>
-            <p className="text-sm text-gray-500 font-sans mt-0.5">{description}</p>
+            <h4 className="font-serif text-base font-semibold">{step.title || STEP_NAMES[step.step_number] || 'Step'}</h4>
+            <p className="text-sm text-gray-500 font-sans mt-0.5">{STEP_DESCRIPTIONS[step.step_number] || ''}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
