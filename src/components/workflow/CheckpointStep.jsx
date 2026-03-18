@@ -161,6 +161,11 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
       onUpdate?.();
     }
   };
+
+  // ...existing code...
+
+  return (
+    <div
       style={isWaiting ? { borderColor: '#1B2A4A' } : {}}
     >
       {/* Header */}
@@ -277,28 +282,15 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
                       const target = step.callback_url || (typeof project !== 'undefined' ? project.n8n_webhook_url : undefined);
                       if (!target) {
                         toast({ description: 'No callback URL set', variant: 'destructive' });
-                        setSaving(true);
-                        try {
-                          // 1. Update DB
-                          if (demoApiClient.entities?.WorkflowStep?.update) {
-                            await demoApiClient.entities.WorkflowStep.update(step.id, {
-                              status: 'revision_requested',
-                              human_feedback: feedback || undefined,
-                              ai_output: null,
-                            });
-                          }
-                          // 2. Send webhook
-                          await sendWebhookResponse('rejected');
-                          toast({ description: 'Sent back for revision' });
-                        } catch (e) {
-                          console.error('Reject step failed:', e);
-                          toast({ description: 'Failed to send back for revision', variant: 'destructive' });
-                        } finally {
-                          setSaving(false);
-                          onUpdate?.();
-                        }
-                      };
-                          // Last question: text answer
+                        setSaving(false);
+                        return;
+                      }
+                      // Format answers
+                      let formattedAnswers = {};
+                      const qids = Object.keys(questionnaireForm || {});
+                      qids.forEach((qid) => {
+                        const qdata = questionnaireForm[qid];
+                        if (qdata.type === 'text') {
                           formattedAnswers[qid] = {
                             question: qdata.question,
                             answer: answers[qid] || ''
