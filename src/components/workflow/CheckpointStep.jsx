@@ -77,8 +77,30 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
   const isFinalStep = step.step_number === 3;
 
   const sendWebhookResponse = async (action) => {
-    const target = step.callback_url || webhookUrl;
-    if (!target) return;
+    // Always use callback_url from DB if present
+    const target = step.callback_url;
+    if (!target) {
+      // Optionally fallback to webhookUrl if callback_url is missing
+      if (webhookUrl) {
+        try {
+          await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              checkpoint: step.step_number,
+              action,
+              feedback,
+              project_context: projectContext,
+              step_title: STEP_NAMES[step.step_number],
+              project_id: step.project_id,
+            }),
+          });
+        } catch (e) {
+          console.error('Webhook POST failed (fallback):', e);
+        }
+      }
+      return;
+    }
     try {
       await fetch(target, {
         method: 'POST',
@@ -93,7 +115,7 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
         }),
       });
     } catch (e) {
-      // webhook failure is non-blocking
+      console.error('Webhook POST failed:', e);
     }
   };
 
