@@ -124,18 +124,17 @@ async function handlePendingApproval(req, res, slot) {
     );
   }
 
-  // Update project current_layer and status
+  // Update project current_layer and status in DB
   try {
-    const pidx = projects.findIndex(p => p.id === projectId);
-    if (pidx !== -1) {
-      projects[pidx].current_layer = slot;
-      projects[pidx].status = projects[pidx].status === 'draft' ? 'running' : projects[pidx].status;
-      projects[pidx].updated_date = new Date().toISOString();
-      await writeJson(PROJECTS_FILE, projects);
-    }
+    await pool.query(
+      'UPDATE strategy_project SET current_layer = $1, status = CASE WHEN status = $2 THEN $3 ELSE status END, updated_date = $4 WHERE id = $5',
+      [slot, 'draft', 'running', now, projectId]
+    );
   } catch (e) {}
 
-  res.json({ success: true, message: ai_output, step });
+  // Return the saved step and ai_output
+  const savedStep = await pool.query('SELECT * FROM workflow_step WHERE id = $1', [stepId]);
+  res.json({ success: true, message: ai_output, step: savedStep.rows[0] });
 }
 
 

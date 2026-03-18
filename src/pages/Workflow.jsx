@@ -138,7 +138,11 @@ export default function Workflow() {
       await demoApiClient.entities.WorkflowStep.update(step.id, { status: 'approved' });
     } catch (e) {}
     await sendWebhookResponse(step, 'approved', step.human_feedback || '');
-    toast({ description: step.step_number === 3 ? 'Final approved — generating report...' : 'Approved — passing to next step' });
+    toast({
+      description: step.step_number === 3 ? 'Final approved — generating report...' : 'Approved — passing to next step',
+      duration: 1200,
+      className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
+    });
     refreshAll();
   };
 
@@ -147,7 +151,11 @@ export default function Workflow() {
       await demoApiClient.entities.WorkflowStep.update(step.id, { status: 'revision_requested', ai_output: null });
     } catch (e) {}
     await sendWebhookResponse(step, 'rejected', step.human_feedback || '');
-    toast({ description: 'Sent back for revision' });
+    toast({
+      description: 'Sent back for revision',
+      duration: 1200,
+      className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
+    });
     refreshAll();
   };
 
@@ -178,12 +186,24 @@ export default function Workflow() {
             n8n_host,
           }),
         });
-        toast({ description: 'Analysis triggered in N8N' });
+        toast({
+          description: 'Analysis triggered in N8N',
+          duration: 1200,
+          className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
+        });
       } catch (e) {
-        toast({ description: 'Failed to reach N8N webhook — check the URL' });
+        toast({
+          description: 'Failed to reach N8N webhook — check the URL',
+          duration: 1200,
+          className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
+        });
       }
     } else {
-      toast({ description: 'No webhook URL set — status updated locally only' });
+      toast({
+        description: 'No webhook URL set — status updated locally only',
+        duration: 1200,
+        className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
+      });
     }
 
     // Persist status change to running
@@ -203,7 +223,11 @@ export default function Workflow() {
     }
     refreshAll();
     setEditingWebhook(false);
-    toast({ description: 'Webhook URL updated' });
+    toast({
+      description: 'Webhook URL updated',
+      duration: 1200,
+      className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
+    });
   };
 
   const handleSaveContext = async () => {
@@ -212,7 +236,11 @@ export default function Workflow() {
     }
     refreshAll();
     setEditingContext(false);
-    toast({ description: 'Project context updated' });
+    toast({
+      description: 'Project context updated',
+      duration: 1200,
+      className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
+    });
   };
 
   const handleStatusChange = async (newStatus) => {
@@ -227,7 +255,11 @@ export default function Workflow() {
     }
     refreshAll();
     setEditingStatus(false);
-    toast({ description: 'Status updated' });
+    toast({
+      description: 'Status updated',
+      duration: 1200,
+      className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
+    });
   };
 
   
@@ -358,7 +390,11 @@ export default function Workflow() {
                     current_layer: 1,
                   });
                   refreshAll();
-                  toast({ description: 'Analysis restarted. You can launch again.' });
+                  toast({
+                    description: 'Analysis restarted. You can launch again.',
+                    duration: 1200,
+                    className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
+                  });
                 }}
                 className="font-sans text-sm text-white gap-2"
                 style={{ background: '#E67E22' }}
