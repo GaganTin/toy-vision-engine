@@ -77,7 +77,6 @@ export default function Projects() {
       await demoApiClient.entities.StrategyProject.delete(deletingProject.id);
     }
     queryClient.invalidateQueries({ queryKey: ['projects'] });
-    toast({ description: 'Project deleted' });
     setDeletingProject(null);
   };
 

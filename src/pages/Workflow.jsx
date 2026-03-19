@@ -240,11 +240,11 @@ export default function Workflow() {
     }
     refreshAll();
     setEditingWebhook(false);
-    toast({
-      description: 'Webhook URL updated',
-      duration: 1200,
-      className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
-    });
+    // toast({
+    //   description: 'Webhook URL updated',
+    //   duration: 1200,
+    //   className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
+    // });
   };
 
   const handleSaveContext = async () => {
@@ -253,11 +253,11 @@ export default function Workflow() {
     }
     refreshAll();
     setEditingContext(false);
-    toast({
-      description: 'Project context updated',
-      duration: 1200,
-      className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
-    });
+    // toast({
+    //   description: 'Project context updated',
+    //   duration: 1200,
+    //   className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
+    // });
   };
 
   const handleStatusChange = async (newStatus) => {
@@ -272,11 +272,11 @@ export default function Workflow() {
     }
     refreshAll();
     setEditingStatus(false);
-    toast({
-      description: 'Status updated',
-      duration: 1200,
-      className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
-    });
+    // toast({
+    //   description: 'Status updated',
+    //   duration: 1200,
+    //   className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
+    // });
   };
 
   

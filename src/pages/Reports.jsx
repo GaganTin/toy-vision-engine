@@ -76,7 +76,7 @@ export default function Reports() {
     const report = savedReports.find(r => r.project_id === deletingId) || reports.find(r => r.project_id === deletingId);
     if (report) await demoApiClient.entities.StrategyReport.delete(report.id);
     queryClient.invalidateQueries({ queryKey: ['all-reports'] });
-    toast({ description: 'Report deleted' });
+    // toast({ description: 'Report deleted' });
     setDeletingId(null);
   };
 
@@ -84,7 +84,7 @@ export default function Reports() {
     if (!shareEmail || !sharingReport) return;
     setSharing(true);
     // Email sending is not supported in demo mode
-    toast({ description: `Report shared to ${shareEmail}` });
+    // toast({ description: `Report shared to ${shareEmail}` });
     setSharing(false);
     setSharingReport(null);
     setShareEmail('');

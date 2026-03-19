@@ -8,7 +8,7 @@ const pool = new Pool({
 });
 
 function generateId() {
-  return uuidv4();
+  return uuidv4().replace(/-/g, '');
 }
 const express = require('express');
 const cors = require('cors');
@@ -59,13 +59,7 @@ app.post('/api/projects', async (req, res) => {
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
       projectFields
     );
-    const newStepId = generateId();
-    await pool.query(
-      `INSERT INTO workflow_step (id, project_id, layer, step, name, created_date)
-      VALUES ($1,$2,$3,$4,$5,$6)`,
-      [newStepId, newProjectId, 1, 1, 'Initial Step', now]
-    );
-    res.json({ project: { id: newProjectId, ...payload, created_date: now, updated_date: now }, initial_step: { id: newStepId, project_id: newProjectId, layer: 1, step: 1, name: 'Initial Step', created_date: now } });
+    res.json({ project: { id: newProjectId, ...payload, created_date: now, updated_date: now } });
   } catch (e) {
     res.status(500).json({ error: 'Failed to create project', details: e.message });
   }
@@ -310,14 +304,14 @@ app.post('/api/steps', async (req, res) => {
     const newStepId = generateId();
     const now = new Date();
     await pool.query(
-      `INSERT INTO workflow_step (id, project_id, layer, step, name, created_date)
+      `INSERT INTO workflow_step (id, project_id, layer, step_number, title, created_date)
       VALUES ($1,$2,$3,$4,$5,$6)`,
       [
         newStepId,
         payload.project_id,
         payload.layer,
-        payload.step,
-        payload.name,
+        payload.step_number,
+        payload.title,
         now
       ]
     );
