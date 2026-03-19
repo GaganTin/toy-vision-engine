@@ -2,7 +2,6 @@
 const FALLBACK = { steps: [], reports: [] };
 // ...existing code...
 
-// const API_BASE = typeof window !== 'undefined' && window?.__DEMO_API_URL ? window.__DEMO_API_URL : (import.meta.env.VITE_API_URL || 'http://localhost:4000/api');
 const API_BASE = '/api';
 
 async function safeFetch(path, options) {

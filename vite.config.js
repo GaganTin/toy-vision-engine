@@ -16,6 +16,7 @@ export default defineConfig({
   },
   server: {
     allowedHosts: [
+      'toy-vision-engine.onrender.com',
       'bxhvq605-5173.asse.devtunnels.ms',
     ],
     proxy: {

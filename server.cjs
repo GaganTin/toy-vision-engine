@@ -2,7 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const { Pool } = require('pg');
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres.huuajgklkruikqgvmshj:ringogobi1902@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres',
+  connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
 
