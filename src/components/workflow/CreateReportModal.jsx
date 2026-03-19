@@ -57,7 +57,7 @@ export default function CreateReportModal({ open, onClose, project, prefillData 
         completed_at: new Date().toISOString(),
       });
     }
-    toast({ description: 'Report created and saved to Reports page' });
+    // toast({ description: 'Report created and saved to Reports page' });
     setSaving(false);
     onClose();
     navigate(`/Report?projectId=${project.id}`);

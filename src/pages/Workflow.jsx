@@ -155,11 +155,11 @@ export default function Workflow() {
       await demoApiClient.entities.WorkflowStep.update(step.id, { status: 'approved' });
     } catch (e) {}
     await sendWebhookResponse(step, 'approved', step.human_feedback || '');
-    toast({
-      description: step.step_number === 3 ? 'Final approved — generating report...' : 'Approved — passing to next step',
-      duration: 1200,
-      className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
-    });
+    // toast({
+    //   description: step.step_number === 3 ? 'Final approved — generating report...' : 'Approved — passing to next step',
+    //   duration: 1200,
+    //   className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
+    // });
     refreshAll();
   };
 
@@ -168,11 +168,11 @@ export default function Workflow() {
       await demoApiClient.entities.WorkflowStep.update(step.id, { status: 'revision_requested', ai_output: null });
     } catch (e) {}
     await sendWebhookResponse(step, 'rejected', step.human_feedback || '');
-    toast({
-      description: 'Sent back for revision',
-      duration: 1200,
-      className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
-    });
+    // toast({
+    //   // description: 'Sent back for revision',
+    //   duration: 1200,
+    //   className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
+    // });
     refreshAll();
   };
 

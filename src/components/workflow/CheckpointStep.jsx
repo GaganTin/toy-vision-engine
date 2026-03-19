@@ -128,7 +128,7 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
     }
     await sendWebhookResponse('approved');
     if (isFinalStep) {
-      toast({ description: 'Final decision approved — generated final report available below.', duration: 1200, className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm' });
+      // toast({ description: 'Final decision approved — generated final report available below.', duration: 1200, className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm' });
       // Generate a final report (unsaved) for review in the Workflow page
       try {
         const reportData = {
@@ -165,7 +165,7 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
       });
     }
     await sendWebhookResponse('rejected');
-    toast({ description: 'Sent back for revision', duration: 1200, className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm' });
+    // toast({ description: 'Sent back for revision', duration: 1200, className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm' });
     onUpdate?.();
     setSaving(false);
   };
@@ -337,11 +337,11 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
                             project_id: step.project_id,
                           }),
                         });
-                        toast({
-                          description: 'Answers sent to n8n',
-                          duration: 1200,
-                          className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
-                        });
+                        // toast({
+                        //   description: 'Answers sent to n8n',
+                        //   duration: 1200,
+                        //   className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm',
+                        // });
                         setIsResponse(true);
                         // Mark step as approved after successful submission
                         if (demoApiClient?.entities?.WorkflowStep?.update) {
@@ -368,9 +368,43 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
               {/* AI Output and controls for non-questionnaire steps */}
               {step.ai_output && (
                 <div>
-                  <label className="text-xs font-sans font-semibold text-gray-400 uppercase tracking-wider">
-                    AI Output
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-sans font-semibold text-gray-400 uppercase tracking-wider">
+                      AI Output
+                    </label>
+                    <button
+                      onClick={() => {
+                        const doc = new jsPDF();
+                        const titleText = title;
+                        let y = 15;
+                        doc.setFontSize(13);
+                        doc.setFont(undefined, 'bold');
+                        doc.text(titleText, 15, y);
+                        y += 9;
+                        doc.setFontSize(9);
+                        doc.setFont(undefined, 'normal');
+                        const plain = (step.ai_output || '')
+                          .replace(/\*\*(.*?)\*\*/g, '$1')
+                          .replace(/\*(.*?)\*/g, '$1')
+                          .replace(/^#{1,6}\s+/gm, '');
+                        const lines = doc.splitTextToSize(plain, 180);
+                        lines.forEach(line => {
+                          if (y > 278) { doc.addPage(); y = 15; }
+                          doc.text(line, 15, y);
+                          y += 5;
+                        });
+                        const safeName = titleText.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+                        doc.save(`${safeName}.pdf`);
+                      }}
+                      className="flex items-center gap-1 text-xs font-sans text-gray-400 hover:text-gray-700 transition-colors"
+                      title="Export AI output as PDF"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                      </svg>
+                      Export PDF
+                    </button>
+                  </div>
                   <div className="mt-2 p-4 bg-white border border-gray-100 rounded-lg text-sm leading-relaxed prose prose-sm max-w-none">
                     <ReactMarkdown>{step.ai_output}</ReactMarkdown>
                   </div>
