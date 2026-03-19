@@ -1,15 +1,22 @@
-// Demo API client that prefers calling a local API server for persistent updates.
 const FALLBACK = { steps: [], reports: [] };
-// ...existing code...
 
-const API_BASE = '/api';
+function generateId() {
+  return Math.random().toString(36).substr(2, 24);
+}
+
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 async function safeFetch(path, options) {
   try {
     const res = await fetch(`${API_BASE}${path}`, options);
-    if (!res.ok) throw new Error('api error');
+    if (!res.ok) {
+      const text = await res.text();
+      console.error(`API ${res.status} on ${path}:`, text);
+      throw new Error('api error');
+    }
     return res.json();
   } catch (err) {
+    console.error(`safeFetch failed [${path}]:`, err.message);
     return null;
   }
 }

@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { v4: uuidv4 } = require('uuid');
 const { Pool } = require('pg');
 
@@ -16,11 +17,6 @@ const cors = require('cors');
 const app = express();
 app.use(cors());
 app.use(express.json());
-
-
-function generateId() {
-  return Math.random().toString(36).substr(2, 24);
-}
 
 // Projects
 app.get('/api/projects', async (req, res) => {

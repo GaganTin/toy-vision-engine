@@ -20,6 +20,7 @@ function GeneratedReport({ projectId, refreshAll, project, steps }) {
     queryKey: ['generated-report', projectId],
     queryFn: () => demoApiClient.entities.StrategyReport.filter({ project_id: projectId }),
     enabled: !!projectId,
+    refetchInterval: 5000,
   });
 
   // Only show the final-report output
@@ -112,17 +113,20 @@ export default function Workflow() {
       return list[0];
     },
     enabled: !!projectId,
+    refetchInterval: 5000,
   });
 
   const { data: steps = [] } = useQuery({
     queryKey: ['steps', projectId],
     queryFn: () => demoApiClient.entities.WorkflowStep.filter({ project_id: projectId }),
     enabled: !!projectId,
+    refetchInterval: 5000,
   });
 
   const refreshAll = () => {
     queryClient.invalidateQueries({ queryKey: ['project', projectId] });
     queryClient.invalidateQueries({ queryKey: ['steps', projectId] });
+    queryClient.invalidateQueries({ queryKey: ['generated-report', projectId] });
   };
 
   const sendWebhookResponse = async (step, action, feedback) => {
