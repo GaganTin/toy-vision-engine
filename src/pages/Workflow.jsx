@@ -24,7 +24,20 @@ function GeneratedReport({ projectId, refreshAll, project, steps }) {
 
   // Only show the final-report output
   const finalReport = (reports || []).find(r => r.generated === true);
-  if (!finalReport) return <div className="p-4 text-sm text-gray-500">No generated final report yet.</div>;
+  const savedReport = (reports || []).find(r => r.saved === true);
+
+  if (!finalReport) {
+    if (savedReport) {
+      return (
+        <div className="p-4 border rounded-lg bg-white flex items-center gap-3">
+          <Button onClick={() => navigate(`/Report?projectId=${encodeURIComponent(projectId)}&from=reports`)} className="bg-[#1B2A4A] text-white">
+            View Report
+          </Button>
+        </div>
+      );
+    }
+    return null;
+  }
 
   const handleSave = async () => {
     if (!finalReport) return;
@@ -36,7 +49,7 @@ function GeneratedReport({ projectId, refreshAll, project, steps }) {
       await demoApiClient.entities.StrategyProject.update(projectId, { status: 'completed', completed_at: new Date().toISOString() });
     }
     refreshAll?.();
-    toast({ description: 'Report saved — opening Reports' });
+    // toast({ description: 'Report saved — opening Reports' });
     navigate(`/Report?projectId=${encodeURIComponent(projectId)}&from=reports`);
   };
 
@@ -280,6 +293,9 @@ export default function Workflow() {
   const step3 = steps.find(s => s.step_number === 3);
   const step4 = steps.find(s => s.step_number === 4);
 
+  // The latest real step number — buttons only shown on this step
+  const latestStepNumber = steps.length > 0 ? Math.max(...steps.map(s => s.step_number)) : 0;
+
   // Show step 3 only if step 2 is approved
   const showStep3 = step2 && step2.status === 'approved';
 
@@ -390,7 +406,6 @@ export default function Workflow() {
                     current_layer: 1,
                   });
                   refreshAll();
-                  // Removed toast for 'Analysis restarted. You can launch again.'
                 }}
                 className="font-sans text-sm text-white gap-2"
                 style={{ background: '#E67E22' }}
@@ -518,7 +533,8 @@ export default function Workflow() {
                   onUpdate={refreshAll}
                   webhookUrl={project.n8n_webhook_url}
                   projectContext={project.company_context}
-                    projectTitle={project.title}
+                  projectTitle={project.title}
+                  isLatestStep={step.step_number === latestStepNumber}
                 />
 
                 {/* Quick actions removed: use in-place controls inside each checkpoint */}

@@ -46,7 +46,7 @@ export default function EditProjectModal({ project, onClose, onSaved }) {
         current_layer: Number(form.current_layer),
       });
     }
-    toast({ description: 'Project updated' });
+    // toast({ description: 'Project updated' });
     onSaved?.();
     setSaving(false);
     onClose();
@@ -90,34 +90,16 @@ export default function EditProjectModal({ project, onClose, onSaved }) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="font-sans text-sm font-medium">Status</Label>
-              <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                <SelectTrigger className="mt-1.5 font-sans">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statuses.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="font-sans text-sm font-medium">Current Layer (1–3)</Label>
-              <Select
-                value={String(form.current_layer)}
-                onValueChange={(v) => setForm({ ...form, current_layer: Number(v) })}
-              >
-                <SelectTrigger className="mt-1.5 font-sans">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Layer 1 — Research</SelectItem>
-                  <SelectItem value="2">Layer 2 — Analysis</SelectItem>
-                  <SelectItem value="3">Layer 3 — Recommendations</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div>
+            <Label className="font-sans text-sm font-medium">Status</Label>
+            <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+              <SelectTrigger className="mt-1.5 font-sans">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {statuses.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>

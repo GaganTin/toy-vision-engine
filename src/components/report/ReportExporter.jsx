@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { Download, FileText, FileSpreadsheet, FileType } from 'lucide-react';
+import { Download, FileText, FileType } from 'lucide-react';
 
 function downloadFile(content, filename, mime) {
   const blob = new Blob([content], { type: mime });
@@ -42,37 +42,35 @@ function markdownToPlainWithBold(text, forPdf = false) {
 
 function reportToText(report) {
   const title = markdownToPlainWithBold(report.title || 'Report');
-  const date = report.created_date || report.updated_date || '';
-  // Clean, minimal header then body, remove markdown for TXT
+  const date = formatDateForFilename(report.created_date || report.updated_date || '');
   return `${title}\n${date}\n\n` + markdownToPlainWithBold(report.report || '');
 }
 
-function reportToCsv(report) {
-  const title = (report.title || 'Report').replace(/"/g, '""');
-  const date = (report.created_date || report.updated_date || '').replace(/"/g, '""');
-  const body = (report.report || '').replace(/"/g, '""');
-  const rows = [
-    ['Title', 'Date', 'Report'],
-    [`"${title}"`, `"${date}"`, `"${body}"`]
-  ];
-  return rows.map(r => r.join(',')).join('\n');
+function reportToWord(report, projectTitle) {
+  const title = projectTitle || report.title || 'Report';
+  const date = formatDateForFilename(report.created_date || report.updated_date || '');
+  const body = (report.report || '')
+    .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+    .replace(/\n/g, '<br>');
+  return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>${title}</title></head><body><h1>${title}</h1><p style="color:#666;font-size:12px">${date}</p><br>${body}</body></html>`;
 }
 
-export default function ReportExporter({ report, title }) {
-  const useTitle = report?.title || title || 'strategy-report';
+export default function ReportExporter({ report, title: projectTitle }) {
+  const useTitle = report?.title || projectTitle || 'strategy-report';
   const dateStamp = formatDateForFilename(report?.created_date || report?.updated_date || new Date().toISOString());
   const safeName = (useTitle + (dateStamp ? `-${dateStamp}` : '')).toLowerCase().replace(/[^a-z0-9\-]+/g, '-');
 
   const exportPdf = () => {
     const doc = new jsPDF();
-    const title = markdownToPlainWithBold(report.title || 'Report', true);
+    const title = markdownToPlainWithBold(projectTitle || report.title || 'Report', true);
     const date = report.created_date || report.updated_date || '';
+    const dateFormatted = formatDateForFilename(date);
     let y = 20;
     doc.setFontSize(12);
     doc.text(title, 20, y);
     y += 8;
     doc.setFontSize(10);
-    doc.text(date, 20, y);
+    doc.text(dateFormatted, 20, y);
     y += 10;
     // Split report into lines, handle bold
     const body = report.report || '';
@@ -121,8 +119,8 @@ export default function ReportExporter({ report, title }) {
         <DropdownMenuItem onClick={exportPdf}>
           <FileText className="w-4 h-4 mr-2" /> Export as PDF
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => downloadFile(reportToCsv(report), `${safeName}.csv`, 'text/csv')}>
-          <FileSpreadsheet className="w-4 h-4 mr-2" /> Export as CSV
+        <DropdownMenuItem onClick={() => downloadFile(reportToWord(report, projectTitle), `${safeName}.doc`, 'application/msword')}>
+          <FileText className="w-4 h-4 mr-2" /> Save as Word
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => downloadFile(reportToText(report), `${safeName}.txt`, 'text/plain')}>
           <FileType className="w-4 h-4 mr-2" /> Export as Text

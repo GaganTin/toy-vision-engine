@@ -35,7 +35,27 @@ const statusConfig = {
   failed:              { label: 'Failed',       color: 'bg-red-50 text-red-700',      icon: AlertCircle },
 };
 
-export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhookUrl, projectContext, projectTitle }) {
+// Convert stored formatted answers back to simple checkbox/text state format
+function extractAnswerState(storedAnswers) {
+  if (!storedAnswers || typeof storedAnswers !== 'object') return {};
+  const result = {};
+  for (const [qid, val] of Object.entries(storedAnswers)) {
+    if (val && typeof val === 'object') {
+      if (Array.isArray(val.answers)) {
+        result[qid] = val.answers.map(o => Object.keys(o)[0]);
+      } else if ('answer' in val) {
+        result[qid] = val.answer;
+      } else {
+        result[qid] = val;
+      }
+    } else {
+      result[qid] = val;
+    }
+  }
+  return result;
+}
+
+export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhookUrl, projectContext, projectTitle, isLatestStep }) {
       // Consolidated questionnaire and state logic
       let is_form = false;
       let questionnaireForm = null;
@@ -58,8 +78,8 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
       // Save ai_output
       const ai_output = step.message || step.ai_output || '';
 
-      // Save answers
-      const [answers, setAnswers] = useState(step.answers || {});
+      // Save answers — convert stored DB format back to simple checkbox/text state
+      const [answers, setAnswers] = useState(step.answers ? extractAnswerState(step.answers) : {});
       const [isResponse, setIsResponse] = useState(!!step.answers);
 
       const handleQuestionChange = (qid, value) => {
@@ -74,6 +94,7 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
   const config = statusConfig[step.status] || statusConfig.pending;
   const StatusIcon = config.icon;
   const isWaiting = step.status === 'awaiting_validation';
+  const isApproved = step.status === 'approved';
   const isFinalStep = step.step_number === 3;
 
   const sendWebhookResponse = async (action) => {
@@ -107,7 +128,7 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
     }
     await sendWebhookResponse('approved');
     if (isFinalStep) {
-      toast({ description: 'Final decision approved — generated final report available below.' });
+      toast({ description: 'Final decision approved — generated final report available below.', duration: 1200, className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm' });
       // Generate a final report (unsaved) for review in the Workflow page
       try {
         const reportData = {
@@ -144,19 +165,19 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
       });
     }
     await sendWebhookResponse('rejected');
-    toast({ description: 'Sent back for revision' });
+    toast({ description: 'Sent back for revision', duration: 1200, className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm' });
     onUpdate?.();
     setSaving(false);
   };
 
   const stepNum = step.step_number;
-  const title = step.title || STEP_NAMES[stepNum] || `Checkpoint ${stepNum}`;
+  const title = STEP_NAMES[stepNum] || step.title || `Checkpoint ${stepNum}`;
   const description = step.description || STEP_DESCRIPTIONS[stepNum] || '';
 
   return (
     <div
       className={`border rounded-xl transition-all duration-300 ${
-        isWaiting ? 'border-2 shadow-sm' : 'border-gray-100'
+        isWaiting ? 'border-2 shadow-sm' : isApproved ? 'border border-green-200 opacity-75' : 'border-gray-100'
       }`}
       style={isWaiting ? { borderColor: '#1B2A4A' } : {}}
     >
@@ -273,7 +294,7 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
                       setSaving(true);
                       const target = step.callback_url || (typeof project !== 'undefined' ? project.n8n_webhook_url : undefined);
                       if (!target) {
-                        toast({ description: 'No callback URL set', variant: 'destructive' });
+                        toast({ description: 'No callback URL set', variant: 'destructive', duration: 1200, className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm' });
                         setSaving(false);
                         return;
                       }
@@ -329,11 +350,11 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
                           } catch (e) {}
                         }
                       } catch (e) {
-                        toast({ description: 'Failed to send answers', variant: 'destructive' });
+                        toast({ description: 'Failed to send answers', variant: 'destructive', duration: 1200, className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm' });
                       }
                       setSaving(false);
                     }}
-                    disabled={saving || !allAnswered || isResponse}
+                    disabled={saving || !allAnswered || isResponse || !isLatestStep}
                     className="mt-4 font-sans text-white"
                     style={{ background: '#1B2A4A' }}
                   >
@@ -388,8 +409,8 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
             </div>
           )}
 
-          {/* Validation Controls: Only show for current step */}
-          {!is_form && isWaiting && (step.step_number === 1 || step.step_number === 2 || step.step_number === 4) && (
+          {/* Validation Controls: Only show for the latest/active step */}
+          {!is_form && isWaiting && isLatestStep && (step.step_number === 1 || step.step_number === 2 || step.step_number === 4) && (
             <div className="space-y-3 pt-2">
               <div className="flex gap-2">
                 <Button
@@ -417,11 +438,6 @@ export default function CheckpointStep({ step, onUpdate, onFinalApproved, webhoo
                 </p>
               )}
             </div>
-          )}
-
-          {/* Disable editing for previous steps */}
-          {!isWaiting && (
-            <div className="text-xs text-gray-400 italic mt-2">This step is locked and cannot be changed after advancing.</div>
           )}
 
           {/* Past feedback */}

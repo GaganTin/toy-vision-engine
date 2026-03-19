@@ -40,21 +40,21 @@ export default function Report() {
   const stripMarkdown = (text) => (text || '').replace(/[#*]/g, '');
 
   const startEdit = () => {
-    const data = { report: stripMarkdown(report.report || '') };
-    data.overall_score = report.overall_score || '';
-    setEditData(data);
+    setEditData({ report: stripMarkdown(report.report || ''), title: project.title || '' });
     setEditing(true);
   };
 
   const handleSave = async () => {
     setSaving(true);
-    const cleanedData = { report: stripMarkdown(editData.report || '') };
-    cleanedData.overall_score = editData.overall_score ? Number(editData.overall_score) : undefined;
     if (demoApiClient.entities?.StrategyReport?.update) {
-      await demoApiClient.entities.StrategyReport.update(report.id, cleanedData);
+      await demoApiClient.entities.StrategyReport.update(report.id, { report: stripMarkdown(editData.report || '') });
+    }
+    if (editData.title && editData.title !== project.title && demoApiClient.entities?.StrategyProject?.update) {
+      await demoApiClient.entities.StrategyProject.update(projectId, { title: editData.title });
     }
     queryClient.invalidateQueries({ queryKey: ['report', projectId] });
-    toast({ description: 'Report saved' });
+    queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+    toast({ description: 'Report saved', duration: 1200, className: 'max-w-xs text-xs py-2 px-3 rounded-md shadow-sm' });
     setSaving(false);
     setEditing(false);
   };
@@ -109,35 +109,22 @@ export default function Report() {
 
       {/* Report Header */}
       <header className="mb-14 border-b border-gray-100 pb-10">
-        <h1 className="font-serif text-4xl md:text-5xl font-bold leading-tight mb-4">
-          {project.title}
-        </h1>
+        {editing ? (
+          <input
+            type="text"
+            value={editData.title || ''}
+            onChange={(e) => setEditData({ ...editData, title: e.target.value })}
+            className="font-serif text-4xl md:text-5xl font-bold leading-tight mb-4 w-full border-b border-gray-300 focus:outline-none focus:border-gray-600 bg-transparent"
+          />
+        ) : (
+          <h1 className="font-serif text-4xl md:text-5xl font-bold leading-tight mb-4">
+            {project.title}
+          </h1>
+        )}
         {project.industry_focus && (
           <span className="inline-block px-3 py-1 rounded-full text-sm font-sans" style={{ background: '#E8ECF2', color: '#1B2A4A' }}>
             {project.industry_focus}
           </span>
-        )}
-        {editing ? (
-          <div className="mt-4 flex items-center gap-2">
-            <label className="font-sans text-sm font-medium text-gray-600">Overall Score (0–100):</label>
-            <input
-              type="number"
-              min="0" max="100"
-              value={editData.overall_score}
-              onChange={(e) => setEditData({ ...editData, overall_score: e.target.value })}
-              className="w-20 border rounded px-2 py-1 font-sans text-sm"
-            />
-          </div>
-        ) : report.overall_score != null && (
-          <div className="mt-6 flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#1B2A4A' }}>
-              <span className="text-white font-sans font-bold text-sm">{report.overall_score}</span>
-            </div>
-            <div>
-              <p className="font-sans text-sm font-semibold" style={{ color: '#1B2A4A' }}>Overall Strategy Score</p>
-              <p className="font-sans text-xs text-gray-500">Out of 100</p>
-            </div>
-          </div>
         )}
       </header>
 

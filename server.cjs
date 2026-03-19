@@ -214,15 +214,14 @@ app.post('/api/reports', async (req, res) => {
     const newReportId = generateId();
     const now = new Date();
     await pool.query(
-      `INSERT INTO strategy_report (id, project_id, overall_score, generated, saved, created_date, updated_date)
-      VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      `INSERT INTO strategy_report (id, project_id, report, generated, saved, created_date)
+      VALUES ($1,$2,$3,$4,$5,$6)`,
       [
         newReportId,
         payload.project_id,
-        payload.overall_score,
+        payload.report || null,
         payload.generated || false,
         payload.saved || false,
-        now,
         now
       ]
     );
@@ -241,15 +240,14 @@ app.post('/api/final-report', async (req, res) => {
     const newReportId = generateId();
     const now = new Date();
     await pool.query(
-      `INSERT INTO strategy_report (id, project_id, overall_score, generated, saved, created_date, updated_date)
-      VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      `INSERT INTO strategy_report (id, project_id, report, generated, saved, created_date)
+      VALUES ($1,$2,$3,$4,$5,$6)`,
       [
         newReportId,
         projectId,
-        payload.overall_score,
+        payload.report || '',
         true,
         false,
-        now,
         now
       ]
     );
@@ -264,14 +262,19 @@ app.put('/api/reports/:id', async (req, res) => {
   const payload = req.body || {};
   const now = new Date();
   try {
-    const result = await pool.query('UPDATE strategy_report SET project_id=$1, overall_score=$2, generated=$3, saved=$4, updated_date=$5 WHERE id=$6 RETURNING *', [
-      payload.project_id,
-      payload.overall_score,
-      payload.generated,
-      payload.saved,
-      now,
-      id
-    ]);
+    const current = await pool.query('SELECT * FROM strategy_report WHERE id = $1', [id]);
+    if (!current.rows.length) return res.status(404).json({ error: 'not found' });
+    const existing = current.rows[0];
+    const updated = {
+      project_id: payload.project_id !== undefined ? payload.project_id : existing.project_id,
+      report: payload.report !== undefined ? payload.report : existing.report,
+      generated: payload.generated !== undefined ? payload.generated : existing.generated,
+      saved: payload.saved !== undefined ? payload.saved : existing.saved,
+    };
+    const result = await pool.query(
+      'UPDATE strategy_report SET project_id=$1, report=$2, generated=$3, saved=$4 WHERE id=$5 RETURNING *',
+      [updated.project_id, updated.report, updated.generated, updated.saved, id]
+    );
     if (result.rows.length === 0) return res.status(404).json({ error: 'not found' });
     res.json(result.rows[0]);
   } catch (e) {
@@ -333,16 +336,26 @@ app.put('/api/steps/:id', async (req, res) => {
   const payload = req.body || {};
   const now = new Date();
   try {
-    const result = await pool.query('UPDATE workflow_step SET project_id=$1, layer=$2, step=$3, name=$4, updated_date=$5 WHERE id=$6 RETURNING *', [
-      payload.project_id,
-      payload.layer,
-      payload.step,
-      payload.name,
-      now,
-      id
-    ]);
+    const current = await pool.query('SELECT * FROM workflow_step WHERE id = $1', [id]);
+    if (!current.rows.length) return res.status(404).json({ error: 'not found' });
+    const existing = current.rows[0];
+    const updated = {
+      project_id: payload.project_id !== undefined ? payload.project_id : existing.project_id,
+      layer: payload.layer !== undefined ? payload.layer : existing.layer,
+      step_number: payload.step_number !== undefined ? payload.step_number : existing.step_number,
+      title: payload.title !== undefined ? payload.title : existing.title,
+      status: payload.status !== undefined ? payload.status : existing.status,
+      human_feedback: payload.human_feedback !== undefined ? payload.human_feedback : existing.human_feedback,
+      ai_output: payload.ai_output !== undefined ? payload.ai_output : existing.ai_output,
+      answers: payload.answers !== undefined ? JSON.stringify(payload.answers) : existing.answers,
+    };
+    const result = await pool.query(
+      'UPDATE workflow_step SET status=$1, ai_output=$2, answers=$3, title=$4 WHERE id=$5 RETURNING *',
+      [updated.status, updated.ai_output, updated.answers, updated.title, id]
+    );
     if (result.rows.length === 0) return res.status(404).json({ error: 'not found' });
-    res.json(result.rows[0]);
+    const step = result.rows[0];
+    res.json({ ...step, status: step.status });
   } catch (e) {
     res.status(500).json({ error: 'Failed to update step', details: e.message });
   }
